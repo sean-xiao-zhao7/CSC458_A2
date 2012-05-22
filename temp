@@ -1,0 +1,37 @@
+	event = stcp_wait_for_event(sd, NETWORK_DATA, NULL);
+    	if (event & NETWORK_DATA) {
+    		
+    		STCPPacket *syn_p = (STCPPacket *) malloc (sizeof(STCPPacket));
+    		stcp_network_recv(sd, syn_p, sizeof(STCPPacket));    
+    		
+    		/* server sends SYN-ACK */
+    		while(times_sent < 6) {
+    			
+    			// setup timer
+	    		tv = (struct timeval *) malloc (sizeof(struct timeval));
+	    		wait_time = (struct timespec *) malloc (sizeof(struct timespec));
+	    		
+	    		gettimeofday(tv, NULL);
+	    		wait_time->tv_sec = tv->tv_sec + 10;
+	    		wait_time->tv_nsec = 0;
+	    		
+    			send_syn_ack(sd, ctx, syn_p);    			
+	        	/* server waits for ACK of SYN-ACK */
+	        	event = stcp_wait_for_event(sd, NETWORK_DATA, wait_time);
+    		
+    		
+	        	if (event & NETWORK_DATA) {
+	        		STCPPacket *ack_p = (STCPPacket *) malloc (sizeof(STCPPacket));
+	        		stcp_network_recv(sd, ack_p, sizeof(STCPPacket));
+	        		/* server is ready to send data */
+	        		/* this concludes the 3 way handshake */	        		
+	        		break;
+	        	} else if (event & TIMEOUT){
+	        		times_sent++;
+	        	}		
+    		}
+    		
+    		if (times_sent == 6) {
+    			error = "Host unreachable\0";
+    		}
+    	}
